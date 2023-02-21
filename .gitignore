@@ -133,4 +133,7 @@ dmypy.json
 env/
 notes.txt
 /dirty_dump/
+/pure_dump/
 /config/settings.py
+.vscode/
+# /cpp_src

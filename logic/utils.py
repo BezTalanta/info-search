@@ -18,9 +18,9 @@ def parse_some_pages(idx_first, idx_second):
     clog.message(f'[{idx_first}, {idx_second}: starting...] I have started parse', clog.GOOD)
     _range = idx_second + 1 - idx_first
     output_parts = {
-        idx_first + _range * 0.5: '50%',
-        idx_first + _range * 0.75: '75%',
-        idx_first + _range * 0.9: '90%',
+        idx_first + int(_range * 0.5): '50%',
+        idx_first + int(_range * 0.75): '75%',
+        idx_first + int(_range * 0.9): '90%',
     }
 
     for i in range(idx_first, idx_second + 1):
@@ -84,3 +84,26 @@ def parse_all_pages(end_page_index, *args, **kwargs):
         #       sp + ppt - 1 + (ppt_left if i == threads_amount - 1 else 0))
         parse_some_pages.delay(sp, sp + ppt - 1 +
                                (ppt_left if i == threads_amount - 1 else 0))
+
+
+@shared_task()
+def parse_dirty_to_pure_sp(start, end):
+    for i in range(start, end + 1):
+        current_file_path = f'dirty_dump/{i}.html'
+        if not os.path.isfile(current_file_path):
+            clog.message(f'{current_file_path} does not exist, passing', clog.ERROR)
+            continue
+        with open(current_file_path, 'r') as f:
+            # Get splitted text by \n
+            b = bs(f.read(), 'html.parser').text.split('\n')
+            # Make it more pretify
+            result_text = '\n'.join([line.strip() for line in b if len(line.strip()) > 0])
+            with open(f'pure_dump/{i}.txt', 'w') as f2: # 533
+                f2.write(result_text)
+
+
+# 53??? - 55000 missing
+def parse_dirty_to_pure():
+    for i in range(10): # 7500
+        l = 7500 * i + 1
+        parse_dirty_to_pure_sp.delay(l, l + 7500)
