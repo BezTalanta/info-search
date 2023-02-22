@@ -14,6 +14,7 @@
 #include <codecvt>
 
 #include "logger.hpp"
+#include "texter.hpp"
 
 using namespace std;
 
@@ -28,34 +29,29 @@ using namespace std;
 // Pure_dump folder path
 string AP_GET_PURE = "../pure_dump/";
 
-// Forward index with additional information
-string AP_SET_FORWARD_FILE_READABLE = "data/forward_r.txt";
-string AP_SET_FORWARD_FILE = "data/forward.bin";
-string AP_SET_BACKWARD_FILE_READABLE = "data/backward_r.txt";
-string AP_SET_BACKWARD_FILE = "data/backward.bin";
-//
-
 // Side part
-unordered_set<char> ALLOWED_SIDE_CHARS({});
-// Add quotes "
 unordered_set<string> DISALLOWED_SIDE_CHARS({
 	"@", ".", "?", "!", ",",
 	"(", ")", ":", ";", "[",
 	"]", "™", "®", "-", ">",
 	"<", "&", " ", "+", "	",
-	"…", "–"});
+	"…", "–", "'", "\"", "_",
+	"*", "%", "\\", "/"});
 
-string alphabet = "abcd";
 //
 unordered_map<string, string> banned_words_permanent({
 	{"lgbt", "lgbt community"},
 	{"lgbtq", "lgbt community"},
-	{"hentai", "18+"},
-	{"anime", "I dont like anime"}
+	{"hentai", "18+ Little anime girls"},
+	{"anime", "I dont like anime"},
+	{"nsfw", "18+ NSFW"},
 });
 
 unordered_set<string> banned_words_common({
-	"and", "the", "this", "for", "franchise", "games", "game"
+	"and", "the", "this", "for",
+	"franchise", "games", "game",
+	"•", "there", "–", "than", "then",
+	"are", "which",
 });
 
 // Function to reverse a string
@@ -112,7 +108,8 @@ private:
 	}
 
 	bool save_to_backward(const string& c){
-		LOG("Word to back: '" + c + "'")
+		// LOG("Word to back: '" + c + "'")
+
 		// TODO: banned words
 		auto ban_permanent_find = banned_words_permanent.find(c);
 		if (ban_permanent_find != banned_words_permanent.end()){
@@ -127,49 +124,74 @@ private:
 		return false;
 	}
 
+	size_t skip_check_fix(const vector<int>& v) const{
+		// cout << "Vector: ";
+		// for (auto item: v)
+		// {
+		// 	cout << item << ' ';
+		// }
+		// cout << '\n';
+
+		if (v[0] == -30 && v[1] == -128 && v[2] == -104) // ‘
+			return 2;
+		return 0;
+	}
+
 	// TODO: apostrof check and clear after that
 	void parse_line(const string& line){
 		string word = "";
 		bool left_side = false;
 		for (int i = 0; i < line.size(); ++i)
 		{
-			// char32_t current_symbol = tolower(line[i]);
-			// u32string dout = U"";
-			// dout += current_symbol;
-			// wstring_convert<codecvt_utf8_utf16<char32_t>,char32_t> codecvt;
-			// cout << "Status: " << codecvt.to_bytes(dout) << ' ' << int(current_symbol) << '\n';
+			char current_symbol = line[i];
+			// LOG("Char: '" + string(1, current_symbol) + "'")
 
-			const char current_symbol = tolower(line[i]);
-			LOG("Char: '" + string(1, current_symbol) + "'")
-			// LOG("Char: " + current_symbol + ' ' + to_string(int(current_symbol)) + ' ' + to_bin(current_symbol))
-			// cout << "Status: " << current_symbol << ' ' << int(current_symbol) << ' ' << to_bin(current_symbol) << '\n';
+			// cout << "Char: '" << current_symbol << "' " << int(current_symbol) << '\n';
+
+			// Be carefully
+			if (current_symbol < 0){
+				vector<int> unicode_symbol;
+				unicode_symbol.push_back(current_symbol);
+				for (int j = i + 1; j < line.size() && j - i < 4; ++j)
+					unicode_symbol.push_back(line[j]);
+				size_t calc_res = skip_check_fix(unicode_symbol);
+				if (calc_res){
+					i += calc_res;
+					continue;
+				}
+			}
+
+			current_symbol = tolower(current_symbol);
 			if (current_symbol == ' ')
-			// if (current_symbol == " ")
 			{
 				// LOG("\tWord: '" + word + "'")
-				// cout << "Word: " <<  word << '\n';
 				save_to_backward(word);
 				left_side = false;
 				word = "";
 			}
 			else if (is_char_disallowed(current_symbol))
 			{
-				if (i + 1 < line.size() &&
-					!is_char_disallowed(line[i + 1]))
-					word += current_symbol;
+				if (!(current_symbol == '\'' || current_symbol == '-')){
+					LOG("2.1: This symbol cannot be in a word: '" +
+						string(1, current_symbol) + "' line was: '" +
+						line + "'")
+					save_to_backward(word);
+					left_side = false;
+					word = "";
+					continue;
+				}
 
-				// LOG("2: " + left_side)
-				// cout << "2: " << left_side << '\n';
-				// if (!left_side)
-				// 	continue;
-				// else if (i + 1 < line.size() &&
-				// 	!is_char_disallowed(to_string(line[i + 1])))
-				// {
-				// 	word += current_symbol;
-				// 	left_side = true;
-				// }
+				if (left_side && i + 1 < line.size() &&
+					!is_char_disallowed(line[i + 1])){
+					// LOG("2: '" + string(1, current_symbol) + "' is disallowed but the next one no: '" + line[i + 1] + "'")
+					word += current_symbol;
+				}
+				else{
+					// LOG("2: '" + string(1, current_symbol) + "' is disallowed and the next one too")
+				}
 			}
 			else{
+				// cout << "Flag3 " << line.size() << " " << i << '\n';
 				word += current_symbol;
 				left_side = true;
 			}
@@ -177,10 +199,12 @@ private:
 		save_to_backward(word);
 	}
 
-	void parse_name(ifstream& file){
+	void parse_name(ifstream& file, bool will_add_backward = false){
 		string s;
 		getline(file, s);
 		save_to_forward(s);
+		if (will_add_backward)
+			parse_line(s);
 	}
 
 	/*	
@@ -202,8 +226,6 @@ private:
 				++lines_amount;
 			}
 		}
-
-		// LOG(to_string(current_doc_id) + " stalled with something!")
 		return lines_amount;
 	}
 
@@ -217,13 +239,12 @@ private:
 		}
 	}
 
-	// bool is_line_require_to_skip(const string& str) const {
-	// 	if (str == "The developers describe the content like this:" ||
-	// 		str == "Publisher" || str == "Developer" || ){
-	// 		return true;
-	// 	}
-	// }
-
+	string get_line_by_num(ifstream& file, const size_t& num) const{
+		string s;
+		for (size_t i = 0; i < num; ++i)
+			getline(file, s);
+		return s;
+	}
 public:
 	void ban_index_out() const {
 		cout << "Ban index:\n";
@@ -277,17 +298,32 @@ public:
 
 		// file_in.seekg(2644);
 		try{
-			parse_until(file_in, "All Games", false);
+			// parse_until(file_in, "All Games", false);
 
-			parse_until(file_in, "Community Hub");
+			string type_of_doc = get_line_by_num(file_in, 180);
+
+			if (type_of_doc != "All Games"){
+				LOG(to_string(current_doc_id) + " type is: " + type_of_doc)
+
+				if (type_of_doc == "All Products >"){
+					parse_and_skip(file_in, 0, 1);
+					parse_name(file_in, true);
+				}
+				return;
+			}
+
+			parse_until(file_in, "Community Hub", false);
 
 			parse_name(file_in);
+			// + Game name in forward list
 
 			parse_until(file_in, "Developer");
+			// + Game name in backward list
 
 			parse_until(file_in, "Release Date:", false);
 
 			parse_and_skip(file_in, 1, 0);
+			// + date
 
 			parse_until(file_in, "Popular user-defined tags for this product:", false);
 
@@ -304,6 +340,16 @@ public:
 			// // - Popular user-defined ...
 
 			parse_until(file_in, "Reviews");
+			// + tags
+
+			parse_and_skip(file_in, 0, 1);
+			// - All Reviews:
+
+			parse_and_skip(file_in, 1, 0);
+
+			parse_until(file_in, "About This Content", false);
+
+			parse_and_skip(file_in, 1, 0);
 		}
 		catch(const runtime_error& error){
 			return;
@@ -311,13 +357,17 @@ public:
 	}
 
 	void test(){
-		string line = "…";
-		char32_t current_symbol = tolower(line[0]);
-		u32string dout = U"";
-		dout += current_symbol;
-		wstring_convert<codecvt_utf8_utf16<char32_t>,char32_t> codecvt;
-		// cout << typeid(codecvt).name() << '\n';
-		// cout << "Status: " << codecvt.to_bytes(dout) << ' ' << int(current_symbol) << '\n';
-		ASSERT(is_char_disallowed(codecvt.to_bytes(dout)), true)
+		string line = "‘test";
+		parse_line(line);
+		return;
+
+		size_t sz = line.size();
+		for (int i = 0; i < sz; ++i)
+			cout << line[i] << ' ' << int(line[i]) << '\n';
 	}
 };
+
+/*
+	‘ -30 -128 -104  TODO check " pets‘ " <- it doesnot working very well
+	“ TODO: make it
+*/
