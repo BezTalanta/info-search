@@ -5,50 +5,59 @@
 
 #include "peeler.hpp"
 #include "logger.hpp"
+// #include "texter.hpp"
 
 using namespace std;
 
 int main(int argc, char *argv[]){
-    string FORWARD_PARSE, BACKWARD_PARSE;
+    bool PARSE_ARG = false, SAVE_ARG = false, RUN_ARG = false;
 
-    // for (size_t i = 1; i < argc; i++){
-    //     string current_arg = string(argv[i]);
-    //     if (current_arg == "-f"){
-    //         FORWARD_PARSE = argv[i + 1];
-    //         i++;
-    //     }
-    //     else if (current_arg == "-b"){
-    //         BACKWARD_PARSE = argv[i + 1];
-    //         i++;
-    //     }
-    // }
+    for (size_t i = 1; i < argc; i++){
+        string current_arg = string(argv[i]);
+        if (current_arg == "-p") // Parse, so that means that program will parse txt
+            PARSE_ARG = true;
+        else if (current_arg == "-s") // Save to a file, that means program will save parsed info to a files
+            SAVE_ARG = true;
+        else if (current_arg == "--run") // Means that program will be listening, and searching
+            RUN_ARG = true;
+        else
+            cout << current_arg << " isn't available argument!\n";
+    }
 
     Peeler peeler = Peeler();
 
-    NEW_SESSION()
+    // NEW_SESSION()
 
     // peeler.test();
     // peeler.out_all();
 
-    // return 0;
+    peeler.load_indexes();
+    peeler.search();
 
-    // if (!FORWARD_PARSE.empty()){
-        // forward_parse(FORWARD_PARSE);
-        clock_t start = clock();
-        for (int i = 1; i < 500; ++i)
-        {
-            if (i == 0){
-                peeler.peel(i + 1, true);
-            }
-            else
-                peeler.peel(i + 1);
-        }
-        cout << "\tTime passed: " << (double)((clock() - start)/CLOCKS_PER_SEC) << "s\n";
-    // }
-    peeler.out_all();
-    // string s;
-    // cin >> s;
-    // peeler.test();
+    // peeler.out_all();
+    return 0;
+
+    clock_t start = clock();
+    for (int i = 1; i < 72501; ++i)
+        peeler.peel(i);
+    clock_t parse_end = clock();
+
+    HIGH_LEVEL("Parse time: " + to_string((double)(parse_end - start)/CLOCKS_PER_SEC))
+
+    peeler.write_all();
+
+    HIGH_LEVEL("File generation time: "
+        + to_string((double)(clock() - parse_end)/CLOCKS_PER_SEC))
+
+    // peeler.out_all();
+    // cout << "\tTime passed:\n";
+    // cout << "Parse time: " <<
+    //     (double)(parse_end - start)/CLOCKS_PER_SEC << "s\n";
+    // cout << "Out time: " <<
+    //     (double)(clock() - parse_end)/CLOCKS_PER_SEC << "s\n";
+    // cout << "Full time: " <<
+    //     (double)(clock() - start)/CLOCKS_PER_SEC << "s\n";
+
     return 0;
 }
 
@@ -75,4 +84,10 @@ int main(int argc, char *argv[]){
         myconv.to_bytes(ws);
 
         cout << codecvt.to_bytes(j) << '\n';
+*/
+
+/*
+    Stats:
+        72500 games required : ./g.sh  43,37s user 8,28s system 36% cpu 2:23,39 total
+            Log: 49s for parsing, 0.55s for files
 */

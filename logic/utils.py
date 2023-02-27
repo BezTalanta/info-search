@@ -1,8 +1,9 @@
 import os
+import requests
 import config.cute_logging as clog
 from celery import shared_task
 from pathlib import Path
-import requests
+from django.conf import settings
 from bs4 import BeautifulSoup as bs
 
 HOW_MANY_GAMES_IN_ONE_PAGE = 25
@@ -107,3 +108,35 @@ def parse_dirty_to_pure():
     for i in range(10): # 7500
         l = 7500 * i + 1
         parse_dirty_to_pure_sp.delay(l, l + 7500)
+
+
+class Engine():
+    def __init__(self):
+        self.banned_indexes: dict[int, str] = {}
+        with open("cpp_src/data/banned.txt") as file:
+            for line in file:
+                words = line.split()
+                self.banned_indexes[int(words[0])] = ' '.join(words[1:])
+        # for k, v in self.banned_indexes.items():
+        #     print(k, ':', v)
+
+    def check_game(self, game_id):
+        return self.banned_indexes.get(game_id, False)
+
+    def get_games_by_page(self, page_num):
+        result = []
+        banned = {}
+        page_id = HOW_MANY_GAMES_IN_ONE_PAGE * (page_num - 1) + 1
+        amount = HOW_MANY_GAMES_IN_ONE_PAGE
+        with open('cpp_src/data/forward.txt') as file:
+            for i, line in enumerate(file):
+                if not amount:
+                    break
+                if i + 1 >= page_id and line != '\n':
+                    check = self.check_game(i + 1)
+                    if check:
+                        banned[i + 1] = check
+                    result.append((i + 1, line[:len(line) - 1]))
+                    amount -= 1
+        return result, banned
+

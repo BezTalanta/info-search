@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% load logic_tags %}
+
+{% block title %}
+    <title>Main page</title>
+{% endblock title %}
+
+{% block style %}
+<style>
+    .page-num {
+        position: absolute;
+        font-size: 37px;
+        top: 5px;
+        text-align: center;
+        width: 100px;
+        padding-right: 10px;
+    }
+
+    .page-num input {
+        width: 80%;
+        height: 50px;
+        font-size: 20px;
+        text-align: center;
+    }
+
+    .main-canvas input {
+        width: 100%;
+        height: 40px;
+    }
+
+    .main-canvas button {
+        width: 100%;
+        height: 40px;
+        margin-bottom: 2px;
+    }
+
+    .arrows .left {
+        float: left;
+        font-size: 30px;
+        margin-left: 5px;
+    }
+
+    .arrows .right {
+        float: right;
+        right: 5px;
+        font-size: 30px;
+        margin-right: 5px;
+    }
+
+    .arrows .left button {
+        background:none;
+        border:none;
+        margin:0;
+        padding:0;
+        cursor: pointer;
+    }
+
+    .arrows .right button {
+        background:none;
+        border:none;
+        margin:0;
+        padding:0;
+        cursor: pointer;
+    }
+
+    .test {
+        background-color: white;
+    }
+
+    .test:hover {
+        background-color: transparent;
+    }
+</style>
+{% endblock style %}
+
+{% block outer %}
+<div class="page-num">
+    {{ page }}
+    <form method="post">
+        {% csrf_token %}
+        <input type="text" name="exact_page">
+    </form>
+</div>
+{% endblock outer %}
+
+{% block content %}
+<form action="">
+    <input type="text" name="search_field" placeholder="Boolean searchable field">
+</form>
+
+<br>
+
+{% for game in games %}
+    <form action="{% url 'logic:static_page' %}" target="_blank">
+        <button class="
+        {% check_ban game.0 as status %}
+        {% if status.0 %}
+            btn btn-danger
+        {% else %}
+            btn btn-success
+        {% endif %}
+        " name="num" value="{{ game.0 }}">
+            {{ game.0 }}
+            {% if status.1 %}
+                <div class="test" style="display: inline;">{{ game.1 }}</div>
+                <div style="float: right;">
+                    {{ status.1 }}
+                </div>
+            {% else %}
+                {{ game.1 }}
+            {% endif %}
+        </button>
+    </form>
+{% empty %}
+    Games are empty!
+{% endfor %}
+
+<div class="arrows">
+    <div class="left">
+        <form method="post">
+            {% csrf_token %}
+            <button name="left_arrow">
+                <
+            </button>
+        </form>
+    </div>
+
+    <div class="right">
+        <form method="post">
+            {% csrf_token %}
+            <button name="right_arrow">
+                >
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- <div class="right_arrow">
+    >
+</div> -->
+{% endblock content %}
